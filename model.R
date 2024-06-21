@@ -7,49 +7,50 @@ library(fdrtool)
 library(MASS)
 library(BiasedUrn)
 
-runmodel<-function(nohostspecies=1,pinf=0.3,pclear=0.05,reinfect=0,distribution="uniform",corr=0,meet=0.5) 
+runmodel<-function(nohostspecies=1, pinf=0.3, pclear=0.05, reinfect=0, distribution="uniform", corr=0, meet=0.5) 
 {
-  agentID<-1
-  size<-2000
-  n<-1000
-  N<<-5000
-  initialh1<-n/2
-  initialinfections<-10
-  initialinfectionsh1<-initialinfections/2
-  its<-200
-  repeats<-1
-  seqlength<-10
-  infectionsethost1<-matrix(NA,nrow=(its+1),ncol=repeats) ##initialise data storage
-  infectionsethost2<-matrix(NA,nrow=(its+1),ncol=repeats) ##initialise data storage
-  fitnesses1<-array(NA,dim=c(n,(its+1),repeats))
-  fitnesses2<-array(NA,dim=c(n,(its+1),repeats))
-  variantshost1<-matrix(NA,nrow=(its+1),ncol=repeats) ##initialise data storage
-  variantshost2<-matrix(NA,nrow=(its+1),ncol=repeats) ##initialise data storage
-  variants<-matrix(NA,nrow=(its+1),ncol=repeats) ##initialise data storage
+  agentID <- 1
+  size <- 2000
+  n <- 1000
+  ##defined globally - why?
+  N <<- 5000
+  initialh1 <- n/2
+  initialinfections <- 10
+  initialinfectionsh1 <- initialinfections/2
+  its <- 200
+  repeats <- 1
+  seqlength <- 10
+  infectionsethost1 <- matrix(NA,nrow=(its+1),ncol=repeats) ##initialise data storage
+  infectionsethost2 <- matrix(NA,nrow=(its+1),ncol=repeats) ##initialise data storage
+  fitnesses1 <- array(NA,dim=c(n,(its+1),repeats))
+  fitnesses2 <- array(NA,dim=c(n,(its+1),repeats))
+  variantshost1 <- matrix(NA,nrow=(its+1),ncol=repeats) ##initialise data storage
+  variantshost2 <- matrix(NA,nrow=(its+1),ncol=repeats) ##initialise data storage
+  variants <- matrix(NA,nrow=(its+1),ncol=repeats) ##initialise data storage
   for (r in 1:repeats) {
-    tlist<-worldgen(n,size,agentID,seqlength,nohostspecies,initialh1,initialinfections,initialinfectionsh1,corr,distribution) ##generate initial model state
-    model<-tlist[[1]]
-    agentID<-tlist[[2]]
-    landscape<-tlist[[3]]
+    tlist <- worldgen(n,size,agentID,seqlength,nohostspecies,initialh1,initialinfections,initialinfectionsh1,corr,distribution) ##generate initial model state
+    model <- tlist[[1]]
+    agentID <- tlist[[2]]
+    landscape <- tlist[[3]]
     rm(tlist)
-    s<-0
-    tlist<-recording(s,r,its,model,landscape,nohostspecies,infectionsethost1,fitnesses1,variantshost1,infectionsethost2,fitnesses2,variantshost2,variants)
-    infectionsethost1<-tlist[[1]]
-    infectionsethost2<-tlist[[2]]
-    fitnesses1<-tlist[[3]]
-    fitnesses2<-tlist[[4]]
-    variantshost1<-tlist[[5]]
-    variantshost2<-tlist[[6]]
-    variants<-tlist[[7]]
+    s <- 0
+    tlist <- recording(s,r,its,model,landscape,nohostspecies,infectionsethost1,fitnesses1,variantshost1,infectionsethost2,fitnesses2,variantshost2,variants)
+    infectionsethost1 <- tlist[[1]]
+    infectionsethost2 <- tlist[[2]]
+    fitnesses1 <- tlist[[3]]
+    fitnesses2 <- tlist[[4]]
+    variantshost1 <- tlist[[5]]
+    variantshost2 <- tlist[[6]]
+    variants <- tlist[[7]]
     rm(tlist)
     rm(s)
     for (s in (1:its)) { ##loop through model interations
       model<-lapply(seq_along(model), function (x) { ##unassign all agents
-        model[[x]]$positioned<-0
+        model[[x]]$positioned <- 0
         return(model[[x]])
       })
       model<-lapply(seq_along(model), function (x) { ##set all agents as old
-        model[[x]]$new<-0
+        model[[x]]$new <- 0
         return(model[[x]])
       })
       unassigned<-length(model) ##set number of unassigned agents
@@ -61,19 +62,19 @@ runmodel<-function(nohostspecies=1,pinf=0.3,pclear=0.05,reinfect=0,distribution=
         if (model[[q]]$positioned==1) {
           next()
         }
-        model[[q]]$positioned<-1 ##mark focal agent positioned
-        unassigned<-unassigned-1 ##mark focal agent assigned
-        tlist<-hostconditioning(model[[q]]$ID,model,agentID,landscape,pclear,reinfect) ##test for host survival and viral clearance
-        model<-tlist[[1]] ##reassign model
-        agentID<-tlist[[3]] ##update agentID
+        model[[q]]$positioned <- 1 ##mark focal agent positioned
+        unassigned <- unassigned-1 ##mark focal agent assigned
+        tlist <- hostconditioning(model[[q]]$ID,model,agentID,landscape,pclear,reinfect) ##test for host survival and viral clearance
+        model <- tlist[[1]] ##reassign model
+        agentID <- tlist[[3]] ##update agentID
         if (!tlist[[2]]) { ##if the host survives (now always returns false as no host death (functional metapopulation))
           rm(tlist)
-          numsharers<-rbinom(1,unassigned,1/space)
+          numsharers <- rbinom(1,unassigned,1/space)
           if (numsharers!=0) {
-          	unassigned<-unassigned-numsharers ##assign selected agents
-          	if (nohostspecies!=1&meet!=0.5) { ##if biased contact ratios
-          		sharersh1<-lapply(seq_along(model),function (x) { ##subset out assignable agents
-              		if (model[[x]]$positioned==0&model[[x]]$hostspecies==1) {
+          	unassigned <- unassigned-numsharers ##assign selected agents
+          	if (nohostspecies!=1 & meet!=0.5) { ##if biased contact ratios
+          		sharersh1 <- lapply(seq_along(model), function (x) { ##subset out assignable agents
+              		if (model[[x]]$positioned==0 & model[[x]]$hostspecies==1) {
                 	return(model[[x]])
               		}
             	})
