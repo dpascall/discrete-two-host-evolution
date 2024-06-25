@@ -1,4 +1,4 @@
-using Random, Distributions, DataFrames, StringDistances
+using Random, Distributions, DataFrames, StringDistances, LinearAlgebra
 
 function f(n::Int, beta::Float64, gamma::Float64, i::Int, t_max::Float64)
     t::Float64 = 0
@@ -26,6 +26,9 @@ function f(n::Int, beta::Float64, gamma::Float64, i::Int, t_max::Float64)
 end
 
 function generate_seqs(nucleotides::Int)
+    if nucleotides < 1
+        throw(DomainError(nucleotides, "argument must be a positive"))
+    end
     alphabet = ["A","C","G","T"]
     return join.(collect(Iterators.product(ntuple(_ -> alphabet, nucleotides)...))[:])
 end
@@ -34,11 +37,11 @@ function mutated_string(seq::String, seqs::Vector{String}, dists::Matrix{Int64},
     return rand(seqs[vec(dists[:,seqs.==seq].==(nucleotides-1))])
 end
 
-function hamming_mat(nucleotides::Int, seqs::Vector{String})
+function hamming_similarity_mat(nucleotides::Int, seqs::Vector{String})
     return nucleotides .- pairwise(Hamming(), seqs)
 end
 
-f(2000, 0.0005, 0.5, 1, 200.0)
 
-temp = generate_seqs(7)
-test = hamming_mat(7, temp)
+function landscape_sim_MVN(U::Matrix{Float64}, D::Vector{Float64}) #using SVD to MVN trick
+    return U * sqrt(diagm(D)) * rand(Normal(), size(U, 1))
+end
