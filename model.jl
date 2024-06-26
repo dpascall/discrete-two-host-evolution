@@ -41,7 +41,21 @@ function hamming_similarity_mat(nucleotides::Int, seqs::Vector{String})
     return nucleotides .- pairwise(Hamming(), seqs)
 end
 
-
-function landscape_sim_MVN(U::Matrix{Float64}, D::Vector{Float64}) #using SVD to MVN trick
+function landscape_sim_MVN(U::Matrix{Float64}, D::Vector{Float64}) ##using SVD to MVN trick
     return U * sqrt(diagm(D)) * rand(Normal(), size(U, 1))
+end
+
+function copula(draws::Vector{Float64}, target_distribution::String, p = 0.2)
+    if target_distribution == "Uniform"
+        return cdf(Normal(), draws)
+    elseif target_distribution == "Gamma"
+        return quantile(Gamma(), cdf(Normal(), draws))
+    elseif target_distribution == "ZIGamma"
+        zigamma_q = cdf(Normal(), draws)
+        zigamma_q[vec(zigamma_q .< p)] = fill(0.0, length(zigamma_q[vec(zigamma_q .< p)]))
+        zigamma_q[vec(zigamma_q .>= p)] = cdf(Gamma(), (zigamma_q[vec(zigamma_q .>= p)] .-p ) ./ (1-p))
+        return zigamma_q
+    else
+        throw(DomainError(target_distribution, "argument must be an implemented distribution"))
+    end
 end
