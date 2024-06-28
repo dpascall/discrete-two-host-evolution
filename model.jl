@@ -5,7 +5,9 @@ function f(n::Int, beta::Float64, gamma::Float64, mu::Float64, i::Int, t_max::Fl
     m::Int = 0 ##initialise mutations
     rates = [0.0, 0.0, 0.0] ##initalise rates
     df_recording = DataFrame(S = Int[], I = Int[], Evolution = Int[], t = Float64[]) ##data frame for storing events
-    df_tracking = DataFrame(ID = 1:n, Status = fill(0, n), Genotype = fill("", n)) ##data frame for storing individuals
+    df_tracking = DataFrame(ID = 1:n, Status = fill(0, n), Genotype = fill("", n), Host = fill(1, n)) ##data frame for storing individuals
+    df_tracking.Status[sample(1:n, i, replace = false)] .= 1 ##randomly set initial infections
+
     push!(df_recording, (n-i, i, 0, t))  ##store initial conditions
     
     while t < t_max ##until pre-defined end point
@@ -17,8 +19,10 @@ function f(n::Int, beta::Float64, gamma::Float64, mu::Float64, i::Int, t_max::Fl
         r_draw = rand(Categorical(rates./sum(rates)), 1) ##determine event type
         if r_draw[1] == 1 ##if infection...
             i = i + 1 ##...increase number of infected individuals
+            df_tracking.Status[sample(findall(==(0), df_tracking.Status), 1, replace = false)] .= 1 ##randomly select infection candidate
         elseif r_draw[1] == 2 ##if clearance...
             i = i - 1 ##...decrease number of infected individuals
+            df_tracking.Status[sample(findall(==(1), df_tracking.Status), 1, replace = false)] .= 0 ##randomly select clearance candidate
         else ##otherwise mutate
             m = m + 1 ##increase count of evolution
         end
@@ -27,7 +31,7 @@ function f(n::Int, beta::Float64, gamma::Float64, mu::Float64, i::Int, t_max::Fl
             break
         end
     end   
-    return df_recording ##return results
+    return df_recording, df_tracking ##return results
 end
 
 function generate_seqs(nucleotides::Int) ##generate initial sequence set
@@ -39,7 +43,7 @@ function generate_seqs(nucleotides::Int) ##generate initial sequence set
 end
 
 function mutated_string(seq::String, seqs::Vector{String}, dists::Matrix{Int64}, nucleotides::Int) ##get candidate mutation
-    return rand(seqs[vec(dists[:,seqs.==seq].==(nucleotides-1))]) ##sample from all sequences of hamming distance 1 (precomputed)
+    return sample(seqs[vec(dists[:,seqs.==seq].==(nucleotides-1))]) ##sample from all sequences of hamming distance 1 (precomputed)
 end
 
 function hamming_similarity_mat(nucleotides::Int, seqs::Vector{String})
