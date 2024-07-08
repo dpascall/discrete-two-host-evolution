@@ -1,4 +1,4 @@
-using Random, Distributions, DataFrames, StringDistances, LinearAlgebra
+using Random, Distributions, DataFrames, StringDistances, LinearAlgebra, CSV, Tables
 
 function f(n::Int, beta::Float64, gamma::Float64, mu::Float64, i::Int, t_max::Float64)
     t::Float64 = 0 ##initialise time
@@ -34,24 +34,12 @@ function f(n::Int, beta::Float64, gamma::Float64, mu::Float64, i::Int, t_max::Fl
     return df_recording, df_tracking ##return results
 end
 
-function generate_seqs(nucleotides::Int) ##generate initial sequence set
-    if nucleotides < 1
-        throw(DomainError(nucleotides, "argument must be a positive"))
-    end
-    alphabet = ["A","C","G","T"] ##alphabet of nucleotides
-    return join.(collect(Iterators.product(ntuple(_ -> alphabet, nucleotides)...))[:]) ##create all possible orderings of n nucleotides
-end
-
 function mutated_string(seq::String, seqs::Vector{String}, dists::Matrix{Int64}, nucleotides::Int) ##get candidate mutation
     return sample(seqs[vec(dists[:,seqs.==seq].==(nucleotides-1))]) ##sample from all sequences of hamming distance 1 (precomputed)
 end
 
-function hamming_similarity_mat(nucleotides::Int, seqs::Vector{String})
-    return nucleotides .- pairwise(Hamming(), seqs) ##generate pairwise hamming distances between all inputed sequences
-end
-
-function landscape_sim_MVN(U::Matrix{Float64}, D::Vector{Float64}) ##using SVD to MVN trick
-    return U * sqrt(diagm(D)) * rand(Normal(), size(U, 1)) ##x ~ Normal() then UD^(1/2)x is MVN with given correlation structure
+function landscape_sim_MVN(factor::Matrix{Float64}) ##using SVD to MVN trick
+    return factor * rand(Normal(), size(factor, 1)) ##x ~ Normal() then UD^(1/2)x is MVN with given correlation structure
 end
 
 function copula(draws::Vector{Float64}, target_distribution::String, p = 0.2) ##using copulas to convert from MVN to target structure
