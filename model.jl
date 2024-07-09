@@ -58,5 +58,4 @@ function copula(draws::Vector{Float64}, target_distribution::String, p = 0.2) ##
     end
 end
 
-
 f(200, 0.005, 0.5, 0.5, 1, 200.0)

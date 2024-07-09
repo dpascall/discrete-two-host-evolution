@@ -1,5 +1,5 @@
 #!/usr/bin/env julia
-using Random, Distributions, StringDistances, DelimitedFiles, CSV, Tables
+using Random, Distributions, StringDistances, DelimitedFiles
 
 function generate_seqs(nucleotides::Int) ##generate initial sequence set
     if nucleotides < 1
@@ -21,7 +21,7 @@ seqs = generate_seqs(4)
 sim_mat = hamming_similarity_mat(4, seqs)
 
 open(joinpath(dirname(@__FILE__), "8HammingDistance.csv"), "w") do io
-    writedlm(io, sim_mat, ',')
+    writedlm(io, sim_mat, ',') ##write out hamming mat
 end
 
 for rho in [-1.0, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1] ##perform SVDs for each of the conditions
@@ -29,7 +29,7 @@ for rho in [-1.0, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1] ##perform SVDs for 
         decomp = svd(calculate_covarience_matrix(8, sim_mat, rho, i), full = true, alg = LinearAlgebra.QRIteration())
         targetname = "factor_" * string(rho) * "_" * string(index) * ".csv"
         open(joinpath(dirname(@__FILE__), targetname), "w") do io
-            writedlm(io, decomp, ',')
+            writedlm(io, decomp, ',') ##write out 
         end
     end
 end
