@@ -1,5 +1,5 @@
 #!/usr/bin/env julia
-using Random, Distributions, StringDistances, DelimitedFiles
+using Random, Distributions, StringDistances, DelimitedFiles, LinearAlgebra
 
 function generate_seqs(nucleotides::Int) ##generate initial sequence set
     if nucleotides < 1
@@ -17,14 +17,14 @@ function calculate_covarience_matrix(nucleotides::Int, hamming_mat::Matrix{Int64
     return kron((hamming_mat./nucleotides).^index, ([[1, rho] [rho, 1]])) ##kronecker of seq correlation matrix and cross landscape correlation matrix
 end
 
-seqs = generate_seqs(4)
-sim_mat = hamming_similarity_mat(4, seqs)
+seqs = generate_seqs(8)
+sim_mat = hamming_similarity_mat(8, seqs)
 
 open(joinpath(dirname(@__FILE__), "8HammingDistance.csv"), "w") do io
     writedlm(io, sim_mat, ',') ##write out hamming mat
 end
 
-for rho in [-1.0, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1] ##perform SVDs for each of the conditions
+Threads.@threads for rho in [-1.0, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1] ##perform SVDs for each of the conditions
     for i in [1.0, 5.0, 10.0]
         decomp = svd(calculate_covarience_matrix(8, sim_mat, rho, i), full = true, alg = LinearAlgebra.QRIteration())
         targetname = "factor_" * string(rho) * "_" * string(index) * ".csv"
