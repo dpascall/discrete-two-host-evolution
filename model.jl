@@ -1,3 +1,4 @@
+#!/usr/bin/env julia
 using Random, Distributions, DataFrames, StringDistances, LinearAlgebra, CSV, Tables
 
 function f(n::Int, beta::Float64, gamma::Float64, mu::Float64, i::Int, t_max::Float64)
