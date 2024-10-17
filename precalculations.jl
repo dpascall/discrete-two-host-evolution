@@ -29,7 +29,7 @@ sim_mat = hamming_similarity_mat(nucleotides, seqs)
 name = string(nucleotides) * "HammingDistance.csv"
 
 open(joinpath(dirname(@__FILE__), name), "w") do io
-    writedlm(io, sim_mat, ',') ##write out hamming mat
+    writedlm(io, pairwise(Hamming(), seqs), ',') ##write out hamming mat
 end
 
 for index in [1.0, 5.0, Inf] ##perform SVDs for each of the conditions
@@ -45,4 +45,4 @@ for index in [1.0, 5.0, Inf] ##perform SVDs for each of the conditions
             end
         end
     end
-#end
+end
