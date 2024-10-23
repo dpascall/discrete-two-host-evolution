@@ -1,7 +1,8 @@
 #!/usr/bin/env julia
-using Random, Distributions, DataFrames, StringDistances, LinearAlgebra, CSV, Tables
+using Random, Distributions, DataFrames, StringDistances, LinearAlgebra, CSV, Tables, StatsBase
+Random.seed!(1234)
 
-function f(n::Int, beta::Float64, gamma::Float64, mu::Float64, i0::Int, t_max::Float64, nucleotides::Int, fitness::DataFrame, Hamming::Matrix)
+function f(n::Int, beta::Float64, gamma::Float64, mu::Float64, i0::Int, t_max::Float64, nucleotides::Int, fitness::DataFrame, Hamming::Matrix, Ne::Int)
     t::Float64 = 0 ##initialise time
     m::Int = 0 ##initialise mutations
     rates = [0.0, 0.0, 0.0] ##initalise rates
@@ -23,12 +24,19 @@ function f(n::Int, beta::Float64, gamma::Float64, mu::Float64, i0::Int, t_max::F
         r_draw = rand(Categorical(rates./sum(rates)), 1) ##determine event type
         if r_draw[1] == 1 ##if infection...
             i = i + 1 ##...increase number of infected individuals
-            df_tracking.Status[sample(findall(==(0), df_tracking.Status), 1, replace = false)] .= 1 ##randomly select infection candidate
+            i_ID = sample(findall(==(1), df_tracking.Status), 1, replace = false) ##randomly select infector candidate
+            s_ID = sample(findall(==(0), df_tracking.Status), 1, replace = false) ##randomly select infection candidate
+            df_tracking.Status[s_ID] .= 1 ##update infection status
+            df_tracking.Genotype[s_ID] .= df_tracking.Genotype[i_ID] ##update genotype
         elseif r_draw[1] == 2 ##if clearance...
             i = i - 1 ##...decrease number of infected individuals
-            df_tracking.Status[sample(findall(==(1), df_tracking.Status), 1, replace = false)] .= 0 ##randomly select clearance candidate
+            i_ID = sample(findall(==(1), df_tracking.Status), 1, replace = false)
+            df_tracking.Status[i_ID] .= 0 ##randomly select clearance candidate
+            df_tracking.Genotype[i_ID] .= "" ##update genotype
         else ##otherwise mutate
             m = m + 1 ##increase count of evolution
+            m_ID = sample(findall(==(1), df_tracking.Status), 1, replace = false)
+            df_tracking.Genotype[m_ID] .= consensus_test(df_tracking.Genotype[m_ID][1], mutated_string(df_tracking.Genotype[m_ID][1], fitness.Sequence, Hamming), fitness, df_tracking.Host[m_ID][1], Ne)
         end
         push!(df_recording, (n-i, i, m, t)) ##update recording
         if i == 0 ##end if extinction
@@ -36,6 +44,27 @@ function f(n::Int, beta::Float64, gamma::Float64, mu::Float64, i0::Int, t_max::F
         end
     end   
     return df_recording, df_tracking ##return results
+end
+
+function consensus_test(resident_seq::String, replacement_seq::String, fitness::DataFrame, host_type::Int, Ne::Int) ##test if new mutant takes over
+    if host_type == 1
+        within_fitness_1 = fitness.Host1Within[fitness.Sequence .== resident_seq][1]
+        within_fitness_2 = fitness.Host1Within[fitness.Sequence .== replacement_seq][1]
+        return selection_algorithm(resident_seq, replacement_seq, within_fitness_1, within_fitness_2, Ne)
+    else
+        within_fitness_1 = fitness.Host2Within[fitness.Sequence .== resident_seq][1]
+        within_fitness_2 = fitness.Host2Within[fitness.Sequence .== replacement_seq][1]
+        return selection_algorithm(resident_seq, replacement_seq, within_fitness_1, within_fitness_2, Ne)
+    end
+end
+
+function selection_algorithm(resident_seq::String, replacement_seq::String, within_fitness_1::Float64, within_fitness_2::Float64, Ne::Int) ##calculation for replacement
+    if (within_fitness_2 - within_fitness_1)/within_fitness_1 < (1/Ne)
+        s = (within_fitness_2 - within_fitness_1)/within_fitness_1
+        return sample([replacement_seq, resident_seq], Weights([((1-exp(-s))/(1-exp(-Ne*s))), 1-((1-exp(-s))/(1-exp(-Ne*s)))])) ##if s > -(1/Ne) sample probability from under nearly neutral regime
+    else
+        return replacement_seq ##else return new seq
+    end
 end
 
 function mutated_string(seq::String, seqs::Vector{String}, dists::Matrix{Int64}) ##get candidate mutation
@@ -69,11 +98,16 @@ function copula(draws::Vector{Float64}, target_distribution::String, p = 0.2) ##
     end
 end
 
-factor = CSV.File("factor_2_1.0_0.5_1.0.csv", header = 0) |> Tables.matrix
-Hamming = CSV.File("2HammingDistance.csv", header = 0) |> Tables.matrix
+factor = CSV.File("factor_4_1.0_0.5_1.0.csv", header = 0) |> Tables.matrix
+Hamming = CSV.File("4HammingDistance.csv", header = 0) |> Tables.matrix
 
 fitness = hcat(generate_seqs(Int.(log(size(factor)[1]/4)/log(4))), reshape(collect(copula(landscape_sim_MVN(factor), "Gamma")), Int.(size(factor)[1]/4), 4))
 fitness = DataFrame(fitness, :auto)
 rename!(fitness, ["Sequence", "Host1Within", "Host2Within", "Host1Between", "Host2Between"])
+fitness[!,:"Sequence"] = convert.(String,fitness[!,:"Sequence"])
+fitness[!,:"Host1Within"] = convert.(Float64,fitness[!,:"Host1Within"])
+fitness[!,:"Host2Within"] = convert.(Float64,fitness[!,:"Host2Within"])
+fitness[!,:"Host1Between"] = convert.(Float64,fitness[!,:"Host1Between"])
+fitness[!,:"Host2Between"] = convert.(Float64,fitness[!,:"Host2Between"])
 
-f(200, 0.005, 0.5, 0.5, 1, 200.0, 2, fitness, Hamming)
+@run f(200, 0.005, 0.5, 0.5, 10, 500.0, Int.(log(size(factor)[1]/4)/log(4)), fitness, Hamming, 40)
