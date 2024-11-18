@@ -4,7 +4,7 @@ using Random, Distributions, StringDistances, DelimitedFiles, LinearAlgebra
 
 function generate_seqs(nucleotides::Int) ##generate initial sequence set
     if nucleotides < 1
-        throw(DomainError(nucleotides, "argument must be a positive"))
+        throw(DomainError(nucleotides, "argument must be in N"))
     end
     alphabet = ["A","C","G","T"] ##alphabet of nucleotides
     return join.(collect(Iterators.product(ntuple(_ -> alphabet, nucleotides)...))[:]) ##create all possible orderings of n nucleotides
